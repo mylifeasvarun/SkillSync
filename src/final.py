@@ -10,45 +10,47 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv('api_key')
+api_key = os.getenv("api_key")
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///hola.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
-ALLOWED_EXTENSIONS = {'docx'}
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///hola.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["UPLOAD_FOLDER"] = "uploads"
+ALLOWED_EXTENSIONS = {"docx"}
 db = SQLAlchemy(app)
 
 openai.api_key = api_key
 
 app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
+
 class Team(db.Model):
     TeamID = db.Column(db.Integer, primary_key=True)
-    TeamMembers = db.Column(db.String(1000), nullable = False)
+    TeamMembers = db.Column(db.String(1000), nullable=False)
+
 
 class User(db.Model):
     ufid = db.Column(db.String(100), primary_key=True)
     username = db.Column(db.String(100), nullable=False)
     # This line remains unchanged, the relationship will use the foreign key defined in Rating
-    rating = db.relationship('Rating', backref='user', uselist=False, lazy='joined')
+    rating = db.relationship("Rating", backref="user", uselist=False, lazy="joined")
+
 
 class Rating(db.Model):
-    ufid = db.Column(db.String(100), db.ForeignKey('user.ufid'), primary_key=True)
+    ufid = db.Column(db.String(100), db.ForeignKey("user.ufid"), primary_key=True)
     average_rating = db.Column(db.Float)
     selected_skills = db.Column(db.String)
 
     def __repr__(self):
         return f"<Rating {self.ufid}, Average Rating: {self.average_rating}, Skills: {self.selected_skills}>"
 
+
 # Initialize database creation, this should be called at an appropriate place in your application setup
 with app.app_context():
     db.create_all()
-    
-    
 
-    
-CSS_STYLES = '''
+
+CSS_STYLES = """
 <style>
 body {
     background-color: #f8f9fa;
@@ -112,10 +114,10 @@ button:hover, .btn-primary:hover {
 }
 
 </style>
-'''
+"""
 
 # Login Page
-LOGIN_HTML = '''
+LOGIN_HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,36 +152,41 @@ LOGIN_HTML = '''
     </div>
 </body>
 </html>
-'''
+"""
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route("/", methods=["GET", "POST"])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        ufid = request.form.get('ufid')
+    if request.method == "POST":
+        username = request.form.get("username")
+        ufid = request.form.get("ufid")
         user = User.query.filter_by(username=username, ufid=ufid).first()
         if user:
-            session['ufid'] = user.ufid
-            return redirect(url_for('upload_file', user_ufid=user.ufid, new_user=False))
+            session["ufid"] = user.ufid
+            return redirect(url_for("upload_file", user_ufid=user.ufid, new_user=False))
         else:
             new_user = User(username=username, ufid=ufid)
             db.session.add(new_user)
             db.session.commit()
-            session['ufid'] = new_user.ufid
-            return redirect(url_for('upload_file', user_ufid=new_user.ufid, new_user=True))
+            session["ufid"] = new_user.ufid
+            return redirect(
+                url_for("upload_file", user_ufid=new_user.ufid, new_user=True)
+            )
     return render_template_string(LOGIN_HTML)
 
 
 # Upload Page
-UPLOAD_HTML = '''
+UPLOAD_HTML = (
+    """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Resume</title>
-    ''' + CSS_STYLES + '''
+    """
+    + CSS_STYLES
+    + """
 </head>
 <body>
     <div class="container">
@@ -201,16 +208,20 @@ UPLOAD_HTML = '''
 </body>
 </html>
 
-'''
+"""
+)
 
-TEXT_TEMPLATE = '''
+TEXT_TEMPLATE = (
+    """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Extracted Skills</title>
-    ''' + CSS_STYLES + '''
+    """
+    + CSS_STYLES
+    + """
 </head>
 <body class="body">
     <div class="container">
@@ -267,9 +278,10 @@ TEXT_TEMPLATE = '''
     </script>
 </body>
 </html>
-'''
+"""
+)
 
-SELECTED_SKILLS_TEMPLATE = f'''
+SELECTED_SKILLS_TEMPLATE = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -378,9 +390,9 @@ SELECTED_SKILLS_TEMPLATE = f'''
     </script>
 </body>
 </html>
-'''
+"""
 
-FEEDBACK_TEMPLATE = f'''
+FEEDBACK_TEMPLATE = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -405,9 +417,9 @@ FEEDBACK_TEMPLATE = f'''
     </div>
 </body>
 </html>
-'''
+"""
 
-DISPLAY_SKILLS = f'''
+DISPLAY_SKILLS = f"""
 <!DOCTYPE html>
 <html>
 <head>
@@ -422,9 +434,12 @@ DISPLAY_SKILLS = f'''
     </ul>
 </body>
 </html>
-'''
+"""
+
+
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def extract_text(file_path):
     # Extract text from .docx file
@@ -432,40 +447,43 @@ def extract_text(file_path):
     return text
 
 
-@app.route('/upload', methods=['GET', 'POST'])
+@app.route("/upload", methods=["GET", "POST"])
 def upload_file():
-    user_ufid = request.args.get('user_ufid')
-    new_user = request.args.get('new_user', 'False') == 'True'  # Convert query parameter to boolean
+    user_ufid = request.args.get("user_ufid")
+    new_user = (
+        request.args.get("new_user", "False") == "True"
+    )  # Convert query parameter to boolean
     user = User.query.get(user_ufid)
-    
-    if not user:
-        return redirect(url_for('login'))  # Redirect to login if no user found
-    
-    if not user:
-        return redirect(url_for('login'))  # Redirect to login if no user found
 
-    if request.method == 'POST':
-        file = request.files['file']
+    if not user:
+        return redirect(url_for("login"))  # Redirect to login if no user found
+
+    if not user:
+        return redirect(url_for("login"))  # Redirect to login if no user found
+
+    if request.method == "POST":
+        file = request.files["file"]
         if file and allowed_file(file.filename):
             filename = file.filename
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
             file.save(file_path)
-            
+
             text = extract_text(file_path)
             # Split the text into skills assuming they are comma-separated
-            skills = [skill.strip() for skill in text.split(',')]
+            skills = [skill.strip() for skill in text.split(",")]
             # Display extracted skills as checkboxes
             return render_template_string(TEXT_TEMPLATE, skills=skills)
-            #return "Resume Uploaded Successfully!"
-            
+            # return "Resume Uploaded Successfully!"
+
     message = "Upload your Resume" if new_user else "Re-upload your Resume"
     return render_template_string(UPLOAD_HTML, message=message)
+
 
 def generate_questions(topics):
     questions = {}
     for skill in topics:
-        levels = ['beginner', 'intermediate', 'advanced']
+        levels = ["beginner", "intermediate", "advanced"]
         skill_questions = []  # Ensure this is a list of questions
         for level in levels:
             prompt = f"Generate a {level} question related to {skill}."
@@ -473,12 +491,13 @@ def generate_questions(topics):
                 model="gpt-3.5-turbo",
                 messages=[{"role": "system", "content": prompt}],
                 temperature=0.5,
-                max_tokens=50
+                max_tokens=50,
             )
-            skill_questions.append(response.choices[0].message['content'].strip())
-        questions[skill] = skill_questions  # Assigning a list of questions to each skill
+            skill_questions.append(response.choices[0].message["content"].strip())
+        questions[skill] = (
+            skill_questions  # Assigning a list of questions to each skill
+        )
     return questions
-
 
 
 def verify_answers(answers):
@@ -489,46 +508,54 @@ def verify_answers(answers):
             model="gpt-3.5-turbo",
             messages=[{"role": "system", "content": prompt}],
             temperature=0,
-            max_tokens=20
+            max_tokens=20,
         )
-        generated_response = response.choices[0].message['content'].strip()
-        feedback[i] = {'answer': answer, 'feedback': generated_response}
+        generated_response = response.choices[0].message["content"].strip()
+        feedback[i] = {"answer": answer, "feedback": generated_response}
     return feedback
+
 
 def calculate_average_rating(feedback):
     total_ratings = 0
     num_responses = len(feedback)
-    
+
     for item in feedback.values():
-        rating = int(item['feedback'])
+        rating = int(item["feedback"])
         total_ratings += rating
-    
+
     average_rating = total_ratings / num_responses if num_responses > 0 else 0
     average_rating = "{:.2f}".format(average_rating)
-    
+
     return average_rating
 
 
-@app.route('/submit_skills', methods=['POST'])
+@app.route("/submit_skills", methods=["POST"])
 def generate_questionnaire():
-    selected_skills = request.form.getlist('skills')
-    session['selected_skills'] = selected_skills
+    selected_skills = request.form.getlist("skills")
+    session["selected_skills"] = selected_skills
     questions = generate_questions(selected_skills)
-    return render_template_string(SELECTED_SKILLS_TEMPLATE, questions=questions, selected_skills=selected_skills)
+    return render_template_string(
+        SELECTED_SKILLS_TEMPLATE, questions=questions, selected_skills=selected_skills
+    )
 
-@app.route('/feedback_skills', methods=['POST'])
+
+@app.route("/feedback_skills", methods=["POST"])
 def verification_answers():
-    if request.method == 'POST':
-        answers = {key: request.form.get(key) for key in request.form if key.startswith('answer')}
+    if request.method == "POST":
+        answers = {
+            key: request.form.get(key)
+            for key in request.form
+            if key.startswith("answer")
+        }
         feedback = verify_answers(answers)
         average_rating = calculate_average_rating(feedback)
-        skills = session.get('selected_skills')
-        ufid = session.get('ufid')  # Retrieve UFID from session
+        skills = session.get("selected_skills")
+        ufid = session.get("ufid")  # Retrieve UFID from session
 
         if not ufid:
             return "User identification missing.", 400
 
-        skills_str = ', '.join(skills)
+        skills_str = ", ".join(skills)
         rating = Rating.query.get(ufid)
 
         if rating:
@@ -537,66 +564,72 @@ def verification_answers():
             rating.selected_skills = skills_str
         else:
             # No existing rating found, create a new one
-            rating = Rating(ufid=ufid, average_rating=average_rating, selected_skills=skills_str)
+            rating = Rating(
+                ufid=ufid, average_rating=average_rating, selected_skills=skills_str
+            )
             db.session.add(rating)
-        
+
         db.session.commit()
 
-        return redirect(url_for('match_teams'))
+        return redirect(url_for("match_teams"))
 
     return "Invalid request", 400
 
 
-@app.route('/match_teams')
+@app.route("/match_teams")
 def match_teams():
-    #users = User.query.join(Rating).order_by(Rating.average_rating.desc()).all()
+    # users = User.query.join(Rating).order_by(Rating.average_rating.desc()).all()
     users = Rating.query.all()
-    
+
     Team.query.delete()
-    #for team in teams:
-    
-    num_teams = len(users)//4   #Team size write it in the denominator
+    # for team in teams:
+
+    num_teams = len(users) // 4  # Team size write it in the denominator
     if num_teams == 0:
         return "error': 'No teams defined", 400
 
     # Initialize team data for balancing
-    team_data = {i: {'members': [], 'total_skill': 0.0} for i in range(1, num_teams+1)}
+    team_data = {
+        i: {"members": [], "total_skill": 0.0} for i in range(1, num_teams + 1)
+    }
 
     print(team_data)
     # Distribute users ensuring all are assigned
     for user in users:
         # Sort teams by total skill ascending to find the least cumulative skill
-        least_team = min(team_data.items(), key=lambda t: (t[1]['total_skill'], t[0]))
-        least_team[1]['members'].append(user.ufid)
-        least_team[1]['total_skill'] += user.average_rating
-    #print("#")
+        least_team = min(team_data.items(), key=lambda t: (t[1]["total_skill"], t[0]))
+        least_team[1]["members"].append(user.ufid)
+        least_team[1]["total_skill"] += user.average_rating
+    # print("#")
     # Update the database with the new team members
     for team_id, data in team_data.items():
-        team = Team(TeamID = team_id, TeamMembers = '')
+        team = Team(TeamID=team_id, TeamMembers="")
         x = []
-        for i in range(len(data['members'])):
-            x.append(str(data['members'][i]))
-        #team.TeamMembers = ','.join(data['members'])
-        team.TeamMembers = ','.join(x)
+        for i in range(len(data["members"])):
+            x.append(str(data["members"][i]))
+        # team.TeamMembers = ','.join(data['members'])
+        team.TeamMembers = ",".join(x)
         y = Team.query.get(team_id)
         if y:
-            y.TeamMembers = ','.join(x)
+            y.TeamMembers = ",".join(x)
         else:
             db.session.add(team)
     db.session.commit()
 
-    return redirect(url_for('list_teams'))
+    return redirect(url_for("list_teams"))
 
 
-
-TEAM_TEMPLATE = '''
+TEAM_TEMPLATE = (
+    """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Team List</title>
-    ''' + CSS_STYLES + '''
+    """
+    + CSS_STYLES
+    + """
 </head>
 <body>
     <div class="container">
@@ -618,9 +651,11 @@ TEAM_TEMPLATE = '''
     </div>
 </body>
 </html>
-'''
+"""
+)
 
-@app.route('/teams')
+
+@app.route("/teams")
 def list_teams():
     # Fetch all teams
     teams = Team.query.all()
@@ -632,16 +667,12 @@ def list_teams():
     team_data = []
     for team in teams:
         # Split the TeamMembers field into UFIDs and lookup usernames
-        member_ids = team.TeamMembers.split(',')
-        member_names = [user_dict.get(ufid, 'Unknown User') for ufid in member_ids]
-        team_data.append({
-            'TeamID': team.TeamID,
-            'TeamMembers': member_names
-        })
+        member_ids = team.TeamMembers.split(",")
+        member_names = [user_dict.get(ufid, "Unknown User") for ufid in member_ids]
+        team_data.append({"TeamID": team.TeamID, "TeamMembers": member_names})
 
-    return render_template_string(TEAM_TEMPLATE, teams = team_data)
+    return render_template_string(TEAM_TEMPLATE, teams=team_data)
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
