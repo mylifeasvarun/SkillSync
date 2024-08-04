@@ -4,7 +4,6 @@ import os
 import docx2txt
 from flask.cli import with_appcontext
 import openai
-import random
 from flask import session
 from dotenv import load_dotenv
 
