@@ -2,3 +2,4 @@
 .DS_Store
 /instance
 Src/BackEnd/.env
+src/FrontEnd/skill-sync-apps/node_modules/
